@@ -39,7 +39,7 @@ class UserProfile(models.Model):
     age = models.PositiveIntegerField()
     income = models.PositiveIntegerField()
     location = models.CharField(max_length=200, blank=True)
-    attempted_polls = models.ManyToManyField(Poll, related_name="people_attempted", blank=True)
+    attempted_polls = models.ManyToManyField(Poll, related_name="users_attempted", blank=True)
 
     class Meta:
         verbose_name = "User Profile"
