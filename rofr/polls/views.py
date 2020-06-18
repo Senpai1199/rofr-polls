@@ -99,4 +99,25 @@ def register(request):
             except:
                 return Response({"message": "An error occurred. Please try again!"}, status=500)
     except KeyError as missing_data:
-        return Response({'message':'Data is Missing: {}'.format(missing_data)}, status=400)        
+        return Response({'message':'Data is Missing: {}'.format(missing_data)}, status=400) 
+
+@api_view(["GET"])
+@permission_classes((IsAuthenticated,))
+def available_polls(request):
+    """
+        Returns polls available to the user for attempting
+    """       
+    user = request.user
+    polls = Poll.objects.all()
+    payload = {
+        "available_polls": []
+    }
+    for poll in polls:
+        if poll in user.profile.attempted_polls.all():
+            continue
+        else:
+            payload["available_polls"].append({
+                "title": poll.title,
+                "no_of_questions": poll.questions.all().count()
+            })
+    return Response(payload, status=200)
