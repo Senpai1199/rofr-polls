@@ -1,0 +1,12 @@
+*vscode
+*venv*
+*.sqlite3
+*pyc
+*keyconfig*
+*.save
+*.swp
+*.fuse_hidden*
+*.log
+rofr/static/
+rofr/media/
+__pycache__/
