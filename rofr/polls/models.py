@@ -10,7 +10,7 @@ class Poll(models.Model):
     attempted_count = models.PositiveIntegerField(default=0) # no. of users who took the poll
 
     def __str__(self):
-        return "{} - {}".format(self.id, self.poll.title)
+        return "{} - {}".format(self.id, self.title)
 
 class Question(models.Model):
     """
@@ -38,7 +38,7 @@ class UserProfile(models.Model):
     gender = models.CharField(choices=GENDERS, null=True, max_length=1)
     age = models.PositiveIntegerField()
     income = models.PositiveIntegerField()
-    location = models.CharField(max_length=200, blank=True)
+    location = models.CharField(max_length=200, blank=False)
     attempted_polls = models.ManyToManyField(Poll, related_name="users_attempted", blank=True)
 
     class Meta:
@@ -47,7 +47,7 @@ class UserProfile(models.Model):
         indexes = [models.Index(fields=['id'])]
 
     def __str__(self):
-        return "{} - {}".format(self.id, self.auth_user.first_name)
+        return "{} - {}".format(self.id, self.auth_user.email)
 
 
 
