@@ -157,19 +157,23 @@ def create_poll(request):
         except Poll.DoesNotExist:
             poll = Poll.objects.create(title=title)
             try:
-                poll.min_age = int(data["min_age"])
+                if data["min_age"] != "":
+                    poll.min_age = int(data["min_age"])
             except:
                 pass    
             try:
-                poll.max_age = int(data["max_age"])
+                if data["max_age"] != "":
+                    poll.max_age = int(data["max_age"])
             except:
                 pass
             try:
-                poll.min_income = int(data["min_income"])
+                if data["min_income"] != "":
+                    poll.min_income = int(data["min_income"])
             except:
                 pass
             try:
-                poll.max_income = int(data["max_income"])
+                if data["max_income"] != "":
+                    poll.max_income = int(data["max_income"])            
             except:
                 pass
         for question in questions:
