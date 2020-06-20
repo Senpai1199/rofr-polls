@@ -8,6 +8,10 @@ class Poll(models.Model):
 
     title = models.CharField(max_length=200, blank=True)
     attempted_count = models.PositiveIntegerField(default=0) # no. of users who took the poll
+    min_age = models.SmallIntegerField(default=0)
+    max_age = models.SmallIntegerField(default=0)
+    min_income = models.SmallIntegerField(default=0)
+    max_income = models.SmallIntegerField(default=0)
 
     def __str__(self):
         return "{} - {}".format(self.id, self.title)

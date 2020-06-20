@@ -122,7 +122,7 @@ def available_polls(request):
         questions_data = []
         for question in questions:
             questions_data.append({
-                "id": question.id
+                "id": question.id,
                 "title": question.title,
                 "type": question.get_category_display(),
                 "optional": question.optional
