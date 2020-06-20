@@ -156,6 +156,22 @@ def create_poll(request):
             return Response({"message": "Poll with this title already exists"}, status=412)
         except Poll.DoesNotExist:
             poll = Poll.objects.create(title=title)
+            try:
+                poll.min_age = int(data["min_age"])
+            except:
+                pass    
+            try:
+                poll.max_age = int(data["max_age"])
+            except:
+                pass
+            try:
+                poll.min_income = int(data["min_income"])
+            except:
+                pass
+            try:
+                poll.max_income = int(data["max_income"])
+            except:
+                pass
         for question in questions:
             valid_categories = ["MCSO", "MCMO", "OWNI", "S", "E"]
             try:
