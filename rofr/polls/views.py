@@ -117,7 +117,11 @@ def available_polls(request):
     for poll in polls:
         if poll in user.profile.attempted_polls.all():
             continue
-
+        if (user.profile.age < poll.min_age or user.profile.income < poll.min_income):
+            continue
+        if (poll.max_age !=0 or poll.max_income != 0):
+            if (user.profile.income > poll.max_income or user.profile.age > poll.max_age):
+                continue
         questions = poll.questions.all()
         questions_data = []
         for question in questions:
