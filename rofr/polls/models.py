@@ -16,11 +16,22 @@ class Question(models.Model):
     """
         Model for managing the details of a question that belongs to a certain Poll
     """
+
+    QUESTION_TYPES = (
+        ('MCSO', 'Multi Choice Single Option'),
+        ('MCMO', 'Multi Choice Multi Option'),
+        ('OWNI', 'One Word or Number Input'),
+        ('S', 'Scale input (1-5)'),
+        ('E', 'Emoticon Input'),
+    )
+
+    title = models.CharField(max_length=200, blank=True)
+    optional = models.BooleanField(default=False)
     poll = models.ForeignKey(Poll, on_delete=models.CASCADE, related_name="questions", null=True)
+    category = models.CharField(choices=QUESTION_TYPES, null=False, max_length=4, default='OWNI')
 
     def __str__(self):
-        return "{} - {}".format(self.id, self.poll.title)
-
+        return "{} - {}".format(self.id, self.title)
 
 class UserProfile(models.Model):
     '''

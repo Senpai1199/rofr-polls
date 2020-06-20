@@ -16,6 +16,8 @@ from rofr import keyconfig
 
 from polls.utils import hasNumbers
 
+# General USER Endpoints
+
 @api_view(["POST"])
 def register(request):
     """
@@ -115,9 +117,65 @@ def available_polls(request):
     for poll in polls:
         if poll in user.profile.attempted_polls.all():
             continue
-        else:
-            payload["available_polls"].append({
-                "title": poll.title,
-                "no_of_questions": poll.questions.all().count()
+
+        questions = poll.questions.all()
+        questions_data = []
+        for question in questions:
+            questions_data.append({
+                "title": question.title,
+                "type": question.get_category_display(),
+                "optional": question.optional
             })
+        payload["available_polls"].append({
+            "title": poll.title,
+            "no_of_questions": poll.questions.all().count(),
+            "questions": questions_data
+        })
     return Response(payload, status=200)
+
+# Admin API Endpoints
+
+@api_view(["POST"])
+@permission_classes((IsAuthenticated,))
+def create_poll(request):
+    """
+        Allows admins to create a new poll
+    """       
+    user = request.user
+    data = request.data
+    try:
+        title = str(data["title"])
+        questions = data["questions"]
+        try:
+            poll = Poll.objects.get(title=title)
+            return Response({"message": "Poll with this title already exists"}, status=412)
+        except Poll.DoesNotExist:
+            poll = Poll.objects.create(title=title)
+        for question in questions:
+            valid_categories = ["MCSO", "MCMO", "OWNI", "S", "E"]
+            try:
+                question_title = str(question["question_title"])
+                category = str(question["category"])
+                if category not in valid_categories:
+                    poll.delete()
+                    return Response({"message": "Invalid question category"}, status=412)
+                try:
+                    optional = question["optional"]
+                    valid_optionals = [True, False]
+                    if optional not in valid_optionals:
+                        poll.delete()
+                        return Response({"message": "Invalid value for optional"}, status=412)
+                except:
+                    optional = False
+                question = Question()
+                question.title = question_title
+                question.category = category
+                question.optional = optional
+                question.poll = poll
+                question.save()
+            except KeyError as missing_data:
+                poll.delete()
+                return Response({'message':'Data is Missing: {}'.format(missing_data)}, status=400) 
+        return Response({"message": "Poll created!"}, status=201)
+    except KeyError as missing_data:
+        return Response({'message':'Data is Missing: {}'.format(missing_data)}, status=400) 

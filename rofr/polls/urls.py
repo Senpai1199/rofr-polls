@@ -7,6 +7,6 @@ urlpatterns = [
     path('register/', views.register, name="register"),
     path('available/', views.available_polls, name="register"),
 
-    #Admin APIs
-
+    # Admin APIs
+    path('create/', views.create_poll, name="create_poll"),
 ]
