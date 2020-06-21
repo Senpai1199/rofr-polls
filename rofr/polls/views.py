@@ -10,7 +10,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.admin.views.decorators import staff_member_required
 
 from django.contrib.auth.models import User
-from polls.models import UserProfile, Question, Poll
+from polls.models import UserProfile, Question, Poll, UserResponse
 
 from rofr import keyconfig
 
@@ -110,9 +110,11 @@ def available_polls(request):
         Returns polls available to the user for attempting
     """       
     user = request.user
+
     polls = Poll.objects.all()
     payload = {
-        "available_polls": []
+        "available_polls": [],
+        "attempted_polls": []
     }
     for poll in polls:
         if poll in user.profile.attempted_polls.all():
@@ -133,10 +135,102 @@ def available_polls(request):
             })
         payload["available_polls"].append({
             "title": poll.title,
+            "attempted_count": poll.attempted_count,
+            "id": poll.id,
             "no_of_questions": poll.questions.all().count(),
             "questions": questions_data
         })
+    
+    for poll in user.profile.attempted_polls.all():
+        payload["attempted_polls"].append({ # polls history of the user
+            "title": poll.title
+        })
+        
     return Response(payload, status=200)
+
+@api_view(["POST"])
+@permission_classes((IsAuthenticated,))
+def attempt_poll(request, poll_id):
+    """
+        Allows users to attempt a poll by ID
+    """
+    print("*** POLL ID: ***", poll_id)
+    user = request.user
+    data = request.data
+
+    if user.is_staff:
+        return Response({"message": "Admin can't attempt a poll"}, status=412)
+
+    try:
+        try:
+            poll = Poll.objects.get(id=poll_id)
+            print("**** POLL TITLE: ***", poll.title)
+            print("**** HEREE *****")
+            if user in poll.users_attempted.all():
+                print("**** ALREADY TAKEN ****")
+                return Response({"message": "You have already taken this poll"}, status=412)
+            question_responses = data["question_responses"]
+            if len(question_responses) > poll.questions.all().count():
+                return Response({"message": "Invalid number of question responses"}, 412)
+        except Poll.DoesNotExist:
+            return Response({"message": "Poll not found!"}, status=404)
+
+        for question_response in question_responses:
+            try:
+                question_id = question_response["id"]
+                try:
+                    question = Question.objects.get(id=question_id)
+                except Question.DoesNotExist:
+                    return Response({"message": "Invalid question ID"}, status=404)    
+                response_input = question_response["response_input"]
+
+                if (question.optional == False and response_input == ""):
+                    poll_responses = poll.responses.all()
+                    poll_responses.delete()
+                    poll.attempted_count -= 1
+                    poll.save()
+                    user.profile.attempted_polls.remove(poll)
+                    user.profile.save()
+                    return Response({"message": "Invalid response to question with ID: {}".format(question.id)}, status=412)
+
+                if (question.category == "S"): # if a Scale (1-5) type question
+                    try:
+                        response_input = int(response_input)
+                        if response_input not in range(1, 6):
+                            poll_responses = poll.responses.all()
+                            poll_responses.delete()
+                            poll.attempted_count -= 1
+                            poll.save()
+                            user.profile.attempted_polls.remove(poll)
+                            user.profile.save()
+                            return Response({"message": "Question response value must be between 1 and 5"}, status=412)
+                    except ValueError:
+                        poll_responses = poll.responses.all()
+                        poll_responses.delete()
+                        poll.attempted_count -= 1
+                        poll.save()
+                        user.profile.attempted_polls.remove(poll)
+                        user.profile.save()
+                        return Response({"message": "Invalid response to question with ID: {}".format(question.id)}, status=412)
+
+                response_instance = UserResponse()
+                response_instance.poll = poll
+                response_instance.question = question
+                response_instance.response = response_input
+                response_instance.save()
+
+            except KeyError as missing_data:
+                return Response({'message':'Data is Missing: {}'.format(missing_data)}, status=400)
+
+        user.profile.attempted_polls.add(poll)
+        user.profile.save()
+        poll.attempted_count += 1
+        poll.save()
+        return Response({"message": "Poll taken successfully!"}, status=200)
+
+    except KeyError as missing_data:
+        return Response({'message':'Data is Missing: {}'.format(missing_data)}, status=400) 
+
 
 # Admin API Endpoints
 
