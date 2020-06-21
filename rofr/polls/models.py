@@ -64,6 +64,13 @@ class UserProfile(models.Model):
     def __str__(self):
         return "{} - {}".format(self.id, self.auth_user.email)
 
+class Response(models.Model):
+    """
+        Handles the details of a user's response to a particular poll
+    """
+    poll = models.ForeignKey(Poll, on_delete=models.CASCADE, related_name="responses", null=True)
+    question = models.ForeignKey(Question, on_delete=models.CASCADE, related_name="responses", null=True)
+    response = models.CharField(max_length=200, blank=False)
 
 
 
