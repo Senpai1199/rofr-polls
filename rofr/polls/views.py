@@ -346,6 +346,7 @@ def get_question_responses(request, q_id, poll_id):
         return Response({"message": "Poll not found"}, status=404)
         
     question_responses = UserResponse.objects.filter(poll=poll, question=question)
+
     if len(question_responses) == 0:
         return Response({"message": "No one has answered this question yet"}, status=200)
 
@@ -364,5 +365,35 @@ def get_question_responses(request, q_id, poll_id):
         })
             
     return Response(payload, status=200)
+
+@api_view(["GET"])
+@permission_classes((IsAuthenticated,))
+def aggregate_responses(request):
+    """
+        Returns the aggregate of the responses for the questions where applicable (Scale type questions)
+    """
+    if not request.user.is_staff:
+        return Response({"message": "Unauthorized"}, status=401)
+    
+    scale_questions = Question.objects.filter(category="S")
+    payload = {
+        "aggregate_responses": []
+    }
+    for question in scale_questions:
+        aggregate = 0
+        for response in UserResponse.objects.filter(question=question):
+            aggregate += int(response.response)
+            payload["aggregate_responses"].append({
+                "poll": question.poll.title,
+                "question": question.title,
+                "aggregate_response": aggregate
+            })
+    
+    if len(payload["aggregate_responses"]) == 0:
+        return Response({"message": "No Scale (1-5) type questions for providing aggregate responses"}, status=200)
+    
+    return Response(payload, status=200)
+
+
     
 
