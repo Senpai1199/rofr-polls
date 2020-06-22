@@ -5,6 +5,12 @@ from django.shortcuts import render
 from rest_framework.decorators import api_view, permission_classes, parser_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from django.http import HttpResponse
+
+from openpyxl.cell import Cell
+from openpyxl.writer.excel import save_virtual_workbook
+from openpyxl import Workbook
+from openpyxl.styles import Font
 
 from django.contrib.auth.decorators import login_required
 from django.contrib.admin.views.decorators import staff_member_required
@@ -313,6 +319,7 @@ def get_poll_responses(request, poll_id):
     payload = {
         "title": poll.title,
         "attempted_count": poll.attempted_count,
+        "download_link": "localhost:8000/polls/responses/download/{}".format(poll_id),
         "responses": []
     }
     for response in poll_responses:
@@ -356,6 +363,7 @@ def get_question_responses(request, q_id, poll_id):
         "poll_title": question.poll.title,
         "category": question.get_category_display(),
         "attempted_count": len(question_responses),
+        "download_link": "localhost:8000/polls/responses/download/{}/{}".format(poll_id, q_id),
         "responses": []
     }
     for response in question_responses:
@@ -393,6 +401,106 @@ def aggregate_responses(request):
         return Response({"message": "No Scale (1-5) type questions for providing aggregate responses"}, status=200)
     
     return Response(payload, status=200)
+
+
+@staff_member_required(login_url="admin:login")
+def poll_responses_excel(request, poll_id):
+    """
+        Receives a poll id and generates an excel sheet for the responses of that poll
+    """
+    poll = Poll.objects.get(id=poll_id)
+    poll_responses = poll.responses.all()
+
+    wb = Workbook()
+    ws = wb.active
+    title = "Responses for {}".format(poll.title)
+    ws.title = title
+
+    ws["A1"] = "Full Name"
+    ws["B1"] = "Response"
+    ws["C1"] = "Question Category"
+    ws["D1"] = "Question"
+
+    bold_font = Font(bold=True)
+
+    for row in ws.iter_rows(min_row=1, max_col=4, max_row=1):
+        for cell in row:
+            cell.font = bold_font
+
+    ws.column_dimensions["A"].width = 20
+    ws.column_dimensions["B"].width = 25
+    ws.column_dimensions["C"].width = 30
+    ws.column_dimensions["D"].width = 40
+     
+    row = 2
+
+    for response in poll_responses:
+        ws["A{}".format(row)] = response.poll_taker.auth_user.first_name + ' ' + response.poll_taker.auth_user.last_name
+        ws["B{}".format(row)] = response.response
+        ws["C{}".format(row)] = response.question.get_category_display()
+        ws["D{}".format(row)] = response.question.title
+
+        row += 1		
+
+    response = HttpResponse(content=save_virtual_workbook(wb), content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    response['Content-Disposition'] = "attachment; filename=Poll Responses.xlsx"
+    return response
+
+@staff_member_required(login_url="admin:login")
+def question_responses_excel(request, poll_id, q_id):
+    """
+        Receives a poll id, question id and generates an excel sheet for the responses for that question of the particular poll
+    """
+    poll = Poll.objects.get(id=poll_id)
+    question = Question.objects.get(id=q_id)
+    question_responses = UserResponse.objects.filter(poll=poll, question=question)
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Question Responses"
+
+    ws["A1"] = "Full Name"
+    ws["B1"] = "Question Title"
+    ws["C1"] = "Poll"
+    ws["D1"] = "Question Category"
+    ws["E1"] = "Optional"
+    ws["F1"] = "Response"
+
+
+    bold_font = Font(bold=True)
+
+    for row in ws.iter_rows(min_row=1, max_col=6, max_row=1):
+        for cell in row:
+            cell.font = bold_font
+
+    ws.column_dimensions["A"].width = 20
+    ws.column_dimensions["B"].width = 25
+    ws.column_dimensions["C"].width = 30
+    ws.column_dimensions["D"].width = 40
+    ws.column_dimensions["E"].width = 20
+    ws.column_dimensions["F"].width = 40
+
+     
+    row = 2
+
+    for response in question_responses:
+        optional = "No"
+        if question.optional:
+            optional = "Yes"
+        
+        ws["A{}".format(row)] = response.poll_taker.auth_user.first_name + ' ' + response.poll_taker.auth_user.last_name
+        ws["B{}".format(row)] = question.title
+        ws["C{}".format(row)] = poll.title
+        ws["D{}".format(row)] = response.question.get_category_display()
+        ws["E{}".format(row)] = optional
+        ws["F{}".format(row)] = response.response
+
+        row += 1		
+
+    response = HttpResponse(content=save_virtual_workbook(wb), content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    response['Content-Disposition'] = "attachment; filename=Question Responses.xlsx"
+    return response
+
 
 
     
