@@ -156,6 +156,7 @@ def attempt_poll(request, poll_id):
     """
     print("*** POLL ID: ***", poll_id)
     user = request.user
+    profile = user.profile
     data = request.data
 
     if user.is_staff:
@@ -164,11 +165,11 @@ def attempt_poll(request, poll_id):
     try:
         try:
             poll = Poll.objects.get(id=poll_id)
-            print("**** POLL TITLE: ***", poll.title)
-            print("**** HEREE *****")
-            if user in poll.users_attempted.all():
-                print("**** ALREADY TAKEN ****")
+            if poll in profile.attempted_polls.all():
+                print("***** BLABLABABLA ******")
                 return Response({"message": "You have already taken this poll"}, status=412)
+
+            print("*** OUTSIDE FOR *****")
             question_responses = data["question_responses"]
             if len(question_responses) > poll.questions.all().count():
                 return Response({"message": "Invalid number of question responses"}, 412)
@@ -184,13 +185,11 @@ def attempt_poll(request, poll_id):
                     return Response({"message": "Invalid question ID"}, status=404)    
                 response_input = question_response["response_input"]
 
+                print("***A QUESTION RESPONSE**")
+
                 if (question.optional == False and response_input == ""):
                     poll_responses = poll.responses.all()
                     poll_responses.delete()
-                    poll.attempted_count -= 1
-                    poll.save()
-                    user.profile.attempted_polls.remove(poll)
-                    user.profile.save()
                     return Response({"message": "Invalid response to question with ID: {}".format(question.id)}, status=412)
 
                 if (question.category == "S"): # if a Scale (1-5) type question
@@ -199,25 +198,16 @@ def attempt_poll(request, poll_id):
                         if response_input not in range(1, 6):
                             poll_responses = poll.responses.all()
                             poll_responses.delete()
-                            poll.attempted_count -= 1
-                            poll.save()
-                            user.profile.attempted_polls.remove(poll)
-                            user.profile.save()
                             return Response({"message": "Question response value must be between 1 and 5"}, status=412)
                     except ValueError:
+                        print("***** VALUE ERROR ****")
                         poll_responses = poll.responses.all()
                         poll_responses.delete()
-                        poll.attempted_count -= 1
-                        poll.save()
-                        user.profile.attempted_polls.remove(poll)
-                        user.profile.save()
                         return Response({"message": "Invalid response to question with ID: {}".format(question.id)}, status=412)
 
-                response_instance = UserResponse()
-                response_instance.poll = poll
-                response_instance.question = question
-                response_instance.response = response_input
-                response_instance.save()
+                print("*** SAB SAHIII***")
+                response_instance = UserResponse.objects.create(question=question, response=response_input, poll_taker=profile, poll=poll)
+                print("*** RESPONSE INSTANCE SAVED ***")
 
             except KeyError as missing_data:
                 return Response({'message':'Data is Missing: {}'.format(missing_data)}, status=400)

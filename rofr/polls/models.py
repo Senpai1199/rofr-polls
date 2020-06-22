@@ -68,10 +68,10 @@ class UserResponse(models.Model):
     """
         Handles the details of a user's response to a particular poll
     """
-    poll = models.ForeignKey(Poll, on_delete=models.CASCADE, related_name="responses", null=True)
+    poll = models.ForeignKey(Poll, on_delete=models.CASCADE, related_name="responses")
     question = models.ForeignKey(Question, on_delete=models.CASCADE, related_name="responses", null=True)
     response = models.CharField(max_length=200, blank=False)
-    poll_taker = models.ForeignKey(User, on_delete=models.CASCADE, null=True)
+    poll_taker = models.ForeignKey(UserProfile, on_delete=models.CASCADE, null=True)
 
     def __str__(self):
         return "{} - {}".format(self.id, self.response)
