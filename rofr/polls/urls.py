@@ -11,6 +11,8 @@ urlpatterns = [
 
     # Admin APIs
     path('create/', views.create_poll, name="create_poll"),
-    path('responses/', views.create_poll, name="get_responses"),
+    path('responses/<int:poll_id>/', views.get_poll_responses, name="get_poll_responses"),
+    path('responses/<int:poll_id>/<int:q_id>', views.get_question_responses, name="get_question_responses"),
+
 
 ]

@@ -231,6 +231,8 @@ def create_poll(request):
         Allows admins to create a new poll
     """       
     user = request.user
+    if not user.is_staff:
+        return Response({"message": "Unauthorized"}, status=401)
     data = request.data
     try:
         title = str(data["title"])
@@ -288,3 +290,79 @@ def create_poll(request):
         return Response({"message": "Poll created!"}, status=201)
     except KeyError as missing_data:
         return Response({'message':'Data is Missing: {}'.format(missing_data)}, status=400) 
+
+@api_view(["GET"])
+@permission_classes((IsAuthenticated,))
+def get_poll_responses(request, poll_id):
+    """
+        Returns responses for a particular poll
+    """       
+
+    if not request.user.is_staff:
+        return Response({"message": "Unauthorized"}, status=401)
+
+    try:
+        poll = Poll.objects.get(id=poll_id)
+    except Poll.DoesNotExist:
+        return Response({"message": "Poll not found"}, status=404)
+    
+    poll_responses = poll.responses.all()
+    if len(poll_responses) == 0:
+        return Response({"message": "No one has taken this poll yet"}, status=200)
+
+    payload = {
+        "title": poll.title,
+        "attempted_count": poll.attempted_count,
+        "responses": []
+    }
+    for response in poll_responses:
+        payload["responses"].append({
+            "full_name": response.poll_taker.auth_user.first_name + ' ' + response.poll_taker.auth_user.last_name,
+            "response_input": response.response,
+            "question_id": response.question.id,
+            "question_category": response.question.get_category_display(),
+            "queston_title": response.question.title
+        })
+            
+    return Response(payload, status=200)
+
+@api_view(["GET"])
+@permission_classes((IsAuthenticated,))
+def get_question_responses(request, q_id, poll_id):
+    """
+        Returns responses for a particular question of a particular poll
+    """       
+
+    if not request.user.is_staff:
+        return Response({"message": "Unauthorized"}, status=401)
+    
+    try:
+        poll = Poll.objects.get(id=poll_id)
+        try:
+            question = Question.objects.get(id=q_id)
+        except Question.DoesNotExist:
+            return Response({"message": "Question not found"}, status=404)
+    except Poll.DoesNotExist:
+        return Response({"message": "Poll not found"}, status=404)
+        
+    question_responses = UserResponse.objects.filter(poll=poll, question=question)
+    if len(question_responses) == 0:
+        return Response({"message": "No one has answered this question yet"}, status=200)
+
+    payload = {
+        "title": question.title,
+        "optional": question.optional,
+        "poll_title": question.poll.title,
+        "category": question.get_category_display(),
+        "attempted_count": len(question_responses),
+        "responses": []
+    }
+    for response in question_responses:
+        payload["responses"].append({
+            "full_name": response.poll_taker.auth_user.first_name + ' ' + response.poll_taker.auth_user.last_name,
+            "response_input": response.response,
+        })
+            
+    return Response(payload, status=200)
+    
+
